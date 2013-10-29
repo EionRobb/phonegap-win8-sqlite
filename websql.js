@@ -1,3 +1,8 @@
+var storageParam = {
+    db : null,
+    dbName : null,
+    path : Windows.Storage.ApplicationData.current.localFolder.path
+}
 
 /**
      * Create a UUID
