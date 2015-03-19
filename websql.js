@@ -303,7 +303,7 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
             statement.step();
             if (resultCode === SQLite3.ResultCode.error) {
                 if (typeof query.errorCallback === 'function') {
-                    query.errorCallback(new SQLError(SQLError.SYNTAX_ERR));
+                    query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
                 }
                 return;
             }
@@ -337,13 +337,13 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
                         break;
                     default:
                         if (typeof query.errorCallback === 'function') {
-                            query.errorCallback(new SQLError(SQLError.DATABASE_ERR));
+                            query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
                         }
                         return;
                 }
                 if (resultCode !== SQLite3.ResultCode.ok) {
                     if (typeof query.errorCallback === 'function') {
-                        query.errorCallback(new SQLError(SQLError.DATABASE_ERR));
+                        query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
                     }
                     return;
                 }
@@ -367,7 +367,7 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
                             row[statement.columnName(j)] = null;
                         } else {
                             if (typeof query.errorCallback === 'function') {
-                                query.errorCallback(new SQLError(SQLError.DATABASE_ERR));
+                                query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
                             }
                             return;
                         }
@@ -378,7 +378,7 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
                 // SQL error or missing database
             } else if (resultCode === SQLite3.ResultCode.error) {
                 if (typeof query.errorCallback === 'function') {
-                    query.errorCallback(new SQLError(SQLError.SYNTAX_ERR));
+                    query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
                 }
                 return;
             }
@@ -441,7 +441,7 @@ function completeQuery(id, data) {
             }
         } catch (e) {
             if (typeof query.errorCallback === 'function') {
-                query.errorCallback(new SQLError(SQLError.UNKNOWN_ERR));
+                query.errorCallback(query.tx, new SQLError(SQLError.UNKNOWN_ERR));
             } else {
                 console.log("executeSql error: " + e);
             }
@@ -475,7 +475,7 @@ function failQuery(reason, id) {
                 try {
                     if (typeof query.errorCallback === 'function') {
                         
-                        query.errorCallback(new SQLError(SQLError.SYNTAX_ERR));
+                        query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
                         return;
                     }
                 } catch (ex) {
@@ -487,7 +487,7 @@ function failQuery(reason, id) {
 
         } catch (e) {
             if (typeof query.errorCallback === 'function') {
-                query.errorCallback(new SQLError(SQLError.UNKNOWN_ERR));
+                query.errorCallback(query.tx, new SQLError(SQLError.UNKNOWN_ERR));
             } else {
                 console.log("executeSql error: " + e);
             }
