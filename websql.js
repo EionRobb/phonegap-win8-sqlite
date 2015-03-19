@@ -1,7 +1,8 @@
 var storageParam = {
     db : null,
     dbName : null,
-    path : Windows.Storage.ApplicationData.current.localFolder.path
+    path : Windows.Storage.ApplicationData.current.localFolder.path,
+	journalMode : null
 }
 
 /**
@@ -97,18 +98,32 @@ function openDatabase(name, version, display_name, size) {
     };
     storageParam.dbName = storageParam.path + "\\" + name + ".sqlite";
     storageParam.db = new SQLite3.Database(storageParam.dbName);
+    
+    var statement = storageParam.db.prepare("SELECT sqlite_version()");
+    statement.step(); 
+    var sqliteVersion = statement.columnDouble(0);
+    statement.close();
+	if (sqliteVersion >= 3.8) {
+		statement = storageParam.db.prepare("PRAGMA journal_mode=WAL");
+	} else {
+		statement = storageParam.db.prepare("PRAGMA journal_mode=MEMORY");
+	}
+	statement.step();
+	statement.close();
+
+    statement = storageParam.db.prepare("PRAGMA journal_mode");
+    statement.step(); 
+    storageParam.journalMode = statement.columnText(0).toLowerCase();
+    statement.close();
 	
 	statement = storageParam.db.prepare("PRAGMA temp_store=MEMORY");
 	statement.step();
 	statement.close();
 	
-	statement = storageParam.db.prepare("PRAGMA synchronous=OFF");
+	statement = storageParam.db.prepare("PRAGMA page_size=4096");
 	statement.step();
 	statement.close();
-	
-	statement = storageParam.db.prepare("PRAGMA page_size=4096;");
-	statement.step();
-	statement.close();
+
 
     return new Database();
 }
@@ -181,17 +196,29 @@ function SQLTransaction () {
 };
 
 SQLTransaction.prototype.beginTransaction = function() {
-	statement = storageParam.db.prepare("SAVEPOINT a" + this.id.substr(0,8));
+	if (storageParam.journalMode == "wal") {
+		statement = storageParam.db.prepare("BEGIN IMMEDIATE");
+	} else {
+		statement = storageParam.db.prepare("SAVEPOINT a" + this.id.substr(0,8));
+	}
 	statement.step();
 	statement.close();
 }
 SQLTransaction.prototype.rollbackTransaction = function() {
-	statement = storageParam.db.prepare("ROLLBACK TO SAVEPOINT a" + this.id.substr(0,8));
+	if (storageParam.journalMode == "wal") {
+		statement = storageParam.db.prepare("ROLLBACK");
+	} else {
+		statement = storageParam.db.prepare("ROLLBACK TO SAVEPOINT a" + this.id.substr(0,8));
+	}
 	statement.step();
 	statement.close();
 }
 SQLTransaction.prototype.commitTransaction = function() {
-	statement = storageParam.db.prepare("RELEASE SAVEPOINT a" + this.id.substr(0,8));
+	if (storageParam.journalMode == "wal") {
+		statement = storageParam.db.prepare("COMMIT");
+	} else {
+		statement = storageParam.db.prepare("RELEASE SAVEPOINT a" + this.id.substr(0,8));
+	}
 	statement.step();
 	statement.close();
 }
