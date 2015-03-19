@@ -357,14 +357,16 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
                     var row = new Object();
                     for (var j = 0 ; j < statement.columnCount() ; j++) {
                         // set corresponding type
-                        if (statement.columnType(j) == "1") {
-                            row[statement.columnName(j)] = statement.columnInt(j);
-                        } else if (statement.columnType(j) == "2") {
-                            row[statement.columnName(j)] = statement.columnDouble(j);
-                        } else if (statement.columnType(j) == "3") {
-                            row[statement.columnName(j)] = statement.columnText(j);
-                        } else if (statement.columnType(j) == "5") {
-                            row[statement.columnName(j)] = null;
+                        var columnType = statement.columnType(j);
+                        var columnName = statement.columnName(j);
+                        if (columnType == 1) {
+                            row[columnName] = statement.columnInt(j);
+                        } else if (columnType == 2) {
+                            row[columnName] = statement.columnDouble(j);
+                        } else if (columnType == 3 || columnType == 4) { // 4 is actually BLOB
+                            row[columnName] = statement.columnText(j);
+                        } else if (columnType == 5) {
+                            row[columnName] = null;
                         } else {
                             if (typeof query.errorCallback === 'function') {
                                 query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
