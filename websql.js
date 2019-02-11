@@ -267,14 +267,6 @@ SQLTransaction.prototype.queryFailed = function (id, reason) {
  */
 SQLTransaction.prototype.executeSql = function (sql, params, successCallback, errorCallback) {
 
-    var isDDL = function (query) {
-        var cmdHeader = String(query).toLowerCase().split(" ")[0];
-        if (cmdHeader == "drop" || cmdHeader == "create" || cmdHeader == "alter" || cmdHeader == "truncate") {
-            return true;
-        }
-        return false;
-    };
-
     // Init params array
     if (typeof params === 'undefined' || params == null) {
         params = [];
@@ -297,99 +289,99 @@ SQLTransaction.prototype.executeSql = function (sql, params, successCallback, er
     }
 
     try {
-        if (isDDL(sql)) {
-            
-            statement = storageParam.db.prepare(sql);
-            statement.step();
-            if (resultCode === SQLite3.ResultCode.error) {
-                if (typeof query.errorCallback === 'function') {
-                    query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
-                }
-                return;
-            }
-            statement.close();
-            completeQuery(query.id, "");
-        } else {
-            statement = storageParam.db.prepare(sql);
-            var index, resultCode;
-            params.forEach(function (arg, i) {
-                index = i + 1;
-                
-                switch (type(arg)) {
-                    case 'number':
-                        if (arg % 1 === 0) {
-                            resultCode = statement.bindInt(index, arg);
-                        } else {
-                            resultCode = statement.bindDouble(index, arg);
-                        }
-                        break;
-					case 'undefined':
-                        resultCode = statement.bindText(index, 'undefined');
-						break;
-					case 'boolean':
-                        resultCode = statement.bindText(index, arg ? 'true' : 'false');
-						break;
-                    case 'string':
-                        resultCode = statement.bindText(index, arg);
-                        break;
-                    case 'null':
-                        resultCode = statement.bindNull(index);
-                        break;
-                    default:
-                        if (typeof query.errorCallback === 'function') {
-                            query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
-                        }
-                        return;
-                }
-                if (resultCode !== SQLite3.ResultCode.ok) {
-                    if (typeof query.errorCallback === 'function') {
-                        query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
-                    }
-                    return;
-                }
-            });
-            // get data
-            var result = new Array();
-            // get the Result codes of SQLite3
-            resultCode = statement.step();
-            if (resultCode === SQLite3.ResultCode.row) {
-                do{
-                    var row = new Object();
-                    for (var j = 0 ; j < statement.columnCount() ; j++) {
-                        // set corresponding type
-                        var columnType = statement.columnType(j);
-                        var columnName = statement.columnName(j);
-                        if (columnType == 1) {
-                            row[columnName] = statement.columnInt(j);
-                        } else if (columnType == 2) {
-                            row[columnName] = statement.columnDouble(j);
-                        } else if (columnType == 3 || columnType == 4) { // 4 is actually BLOB
-                            row[columnName] = statement.columnText(j);
-                        } else if (columnType == 5) {
-                            row[columnName] = null;
-                        } else {
-                            if (typeof query.errorCallback === 'function') {
-                                query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
-                            }
-                            return;
-                        }
-                    
-                    }
-                    result.push(row);
-                } while (statement.step() === SQLite3.ResultCode.row);
-                // SQL error or missing database
-            } else if (resultCode === SQLite3.ResultCode.error) {
-                if (typeof query.errorCallback === 'function') {
-                    query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
-                }
-                return;
-            }
-            completeQuery(query.id, result);
-            statement.close();
-        }
+		statement = storageParam.db.prepare(sql);
+		
+		var index, resultCode;
+		params.forEach(function (arg, i) {
+			index = i + 1;
+			
+			switch (type(arg)) {
+				case 'number':
+					if (arg % 1 === 0) {
+						resultCode = statement.bindInt(index, arg);
+					} else {
+						resultCode = statement.bindDouble(index, arg);
+					}
+					break;
+				case 'undefined':
+					resultCode = statement.bindText(index, 'undefined');
+					break;
+				case 'boolean':
+					resultCode = statement.bindText(index, arg ? 'true' : 'false');
+					break;
+				case 'string':
+					resultCode = statement.bindText(index, arg);
+					break;
+				case 'null':
+					resultCode = statement.bindNull(index);
+					break;
+				default:
+					if (typeof query.errorCallback === 'function') {
+						query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
+					}
+					return;
+			}
+			if (resultCode !== SQLite3.ResultCode.ok) {
+				if (typeof query.errorCallback === 'function') {
+					query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
+				}
+				return;
+			}
+		});
+		
+		// get data
+		var result = new Array();
+		// get the Result codes of SQLite3
+		resultCode = statement.step();
+		
+		if (resultCode === SQLite3.ResultCode.row) {
+			do {
+				var row = new Object();
+				for (var j = 0 ; j < statement.columnCount() ; j++) {
+					// set corresponding type
+					var columnType = statement.columnType(j);
+					var columnName = statement.columnName(j);
+					if (columnType == 1) {
+						row[columnName] = statement.columnInt(j);
+					} else if (columnType == 2) {
+						row[columnName] = statement.columnDouble(j);
+					} else if (columnType == 3 || columnType == 4) { // 4 is actually BLOB
+						row[columnName] = statement.columnText(j);
+					} else if (columnType == 5) {
+						row[columnName] = null;
+					} else {
+						if (typeof query.errorCallback === 'function') {
+							query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR));
+						}
+						return;
+					}
+				
+				}
+				result.push(row);
+			} while (statement.step() === SQLite3.ResultCode.row);
+		
+		// SQL error or missing database
+		} else if (resultCode === SQLite3.ResultCode.error) {
+			if (typeof query.errorCallback === 'function') {
+				if (typeof statement.reset === 'function') {
+					var SqliteErrorCode = statement.reset();
+					if (SqliteErrorCode == SQLite3.ResultCode.constraint) {
+						query.errorCallback(query.tx, new SQLError(SQLError.CONSTRAINT_ERR));
+					} else {
+						query.errorCallback(query.tx, new SQLError(SQLError.DATABASE_ERR, storageParam.db.lastErrorMsg()));
+					}
+				} else {
+					query.errorCallback(query.tx, new SQLError(SQLError.SYNTAX_ERR));
+				}
+			}
+			return;
+		}
+		
+		completeQuery(query.id, result);
+		statement.close();
         
     } catch (e) {
-        failQuery(e.description, query.id)
+        failQuery(e.description, query.id);
     }
 };
 
